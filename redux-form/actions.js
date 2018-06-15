@@ -1,6 +1,5 @@
 import * as actionTypes from "./actionTypes";
-import { toggleSnackbarAndSetText } from "redux/app/actions";
-import { httpRequest, loginRequest, uploadFile } from "utils/api";
+import { httpRequest, uploadFile } from "utils/api";
 import { prepareFormData } from "utils/commons";
 import { FILE_UPLOAD } from "utils/endPoints";
 import { validateForm } from "./utils";
@@ -64,21 +63,11 @@ export const submitForm = (formKey, saveUrl) => {
       const { action } = form;
       try {
         const formData = await transformer("viewModelToBusinessModelTransformer", formKey, form, state);
-        let formResponse = {};
-        // this will eventually moved out to the auth action; bit messy
-        if (formData.hasOwnProperty("login")) {
-          formResponse = await loginRequest(formData.login.username, formData.login.password);
-        } else if (formData.hasOwnProperty("employee")) {
-          formResponse = await loginRequest(formData.employee.username, formData.employee.password);
-        } else {
-          formResponse = await httpRequest(saveUrl, action, [], formData);
-        }
+        const formResponse = await httpRequest(saveUrl, action, [], formData);
         dispatch(submitFormComplete(formKey, formResponse));
       } catch (error) {
         const { message } = error;
-        throw new Error(error);
-        // dispatch(submitFormError(formKey, message));
-        // dispatch(toggleSnackbarAndSetText(true, message, true));
+        dispatch(submitFormError(formKey, message));
       }
     } else {
       dispatch(displayFormErrors(formKey));
@@ -104,8 +93,6 @@ export const removeFile = (formKey, fieldKey, fileIndex) => {
   return { type: actionTypes.FILE_REMOVE, fieldKey, formKey, fileIndex };
 };
 
-// currently supports only single file upload at a time, although the API has support for multiple file upload
-// TODO : can the upload happen at a later point in time? Challenge is to intimate the user if in case of a failure
 export const fileUpload = (formKey, fieldKey, fileObject, fileIndex) => {
   const { name: fileName } = fileObject.file;
   return async (dispatch, getState) => {
